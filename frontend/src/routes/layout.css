@@ -1,3 +1,100 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
+@import url('https://fonts.googleapis.com/css?family=Aldrich:700|Aldrich:400');
+
+:root {
+  /* Brand Tokens */
+  --color-primary: var(--theme-primary);
+  --color-secondary: var(--theme-secondary);
+  --color-accent: var(--theme-accent);
+
+  /* Neutral Tokens */
+  --color-text: var(--theme-text);
+  --color-bg: var(--theme-background);
+
+  /* Typography Tokens */
+  --font-main: var(--theme-font);
+  --font-weight-normal: var(--theme-font-weight-normal);
+  --font-weight-bold: var(--theme-font-weight-bold);
+
+  /* Font Scale Tokens */
+  --text-h1: var(--theme-h1);
+  --text-h2: var(--theme-h2);
+  --text-h3: var(--theme-h3);
+  --text-h4: var(--theme-h4);
+  --text-h5: var(--theme-h5);
+  --text-small: var(--theme-small);
+}
+
+[data-theme="light"] {
+  /* Neutrals */
+  --theme-text: #130712;
+  --theme-background: #fbf4fa;
+
+  /* Brand */
+  --theme-primary: #c24cb0;
+  --theme-secondary: #dd9ca3;
+  --theme-accent: #cc786b;
+
+  /* Typography */
+  --theme-font: 'Aldrich';
+  --theme-font-weight-normal: 400;
+  --theme-font-weight-bold: 700;
+
+  /* Font Scale */
+  --theme-h1: 4.210rem;
+  --theme-h2: 3.158rem;
+  --theme-h3: 2.369rem;
+  --theme-h4: 1.777rem;
+  --theme-h5: 1.333rem;
+  --theme-small: 0.750rem;
+}
+
+[data-theme="dark"] {
+  /* Neutrals */
+  --theme-text: #f8ecf7;
+  --theme-background: #0b040a;
+
+  /* Brand */
+  --theme-primary: #b33da1;
+  --theme-secondary: #632228;
+  --theme-accent: #944033;
+
+  /* Typography */
+  --theme-font: 'Aldrich';
+  --theme-font-weight-normal: 400;
+  --theme-font-weight-bold: 700;
+
+  /* Font Scale */
+  --theme-h1: 4.210rem;
+  --theme-h2: 3.158rem;
+  --theme-h3: 2.369rem;
+  --theme-h4: 1.777rem;
+  --theme-h5: 1.333rem;
+  --theme-small: 0.750rem;
+}
+
+[data-theme="tokyonight"] {
+  /* Neutrals */
+  --theme-text: #c0caf5;
+  --theme-background: #1a1b26;
+
+  /* Brand */
+  --theme-primary: #7aa2f7;
+  --theme-secondary: #bb9af7;
+  --theme-accent: #f7768e;
+
+  /* Typography */
+  --theme-font: 'Inter', sans-serif;
+  --theme-font-weight-normal: 400;
+  --theme-font-weight-bold: 700;
+
+  /* Font Scale */
+  --theme-h1: 3.2rem;
+  --theme-h2: 2.6rem;
+  --theme-h3: 2.1rem;
+  --theme-h4: 1.7rem;
+  --theme-h5: 1.3rem;
+  --theme-small: 0.8rem;
+}
