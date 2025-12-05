@@ -2,9 +2,10 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { sql } from "drizzle-orm"; // Import sql
 import pg from 'pg';
 import { profiles } from './db/schema.ts';
-import { verifySupabaseToken } from './verifySupabaseToken.ts';
+import { verifySupabaseToken } from './verifySupabaseToken.ts'; // Ensure extension matches your file
 
 const app = express();
 const port = 3000;
@@ -22,23 +23,33 @@ app.use(express.json());
 // API Route
 app.post("/api/init-profile", verifySupabaseToken, async (req: any, res) => {
   try {
-    const { sub, email } = req.user; // 'sub' comes from the verified Supabase token
+    const { sub, email } = req.user;
     const { username, avatar } = req.body;
 
     if (!username) {
       return res.status(400).json({ message: "Username is required" });
     }
 
-    // Save user to Postgres via Drizzle
-    const newProfile = await db.insert(profiles).values({
-      id: sub,
-      email: email,
-      username: username,
-      profile_picture: avatar, // Can be null, schema handles default
-    }).returning();
+    // Use a transaction to set the local session variables for RLS
+    const [newProfile] = await db.transaction(async (tx) => {
+      // 1. Set the config so Postgres thinks we are the authenticated user
+      // This satisfies the "auth.uid() = id" or "role = authenticated" policies
+      await tx.execute(sql`
+        SELECT set_config('request.jwt.claim.sub', ${sub}, true);
+        SELECT set_config('request.jwt.claim.role', 'authenticated', true);
+      `);
 
-    res.status(200).json(newProfile[0]);
+      // 2. Perform the insert within the same transaction scope
+      return await tx.insert(profiles).values({
+        id: sub,
+        email: email,
+        username: username,
+        profile_picture: avatar,
+      }).returning();
+    });
+
     console.log(newProfile);
+    res.status(200).json(newProfile);
 
   } catch (error) {
     console.error("Init profile error:", error);
