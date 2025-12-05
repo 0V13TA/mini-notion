@@ -5,8 +5,30 @@ export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
+export async function signInLocal(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  return { data, error };
+}
+
+// 1. Simplified Signup (Step 1)
+export async function signUpLocal(email: string, password: string) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      // Redirect to the setup page after they click the email link
+      emailRedirectTo: `${import.meta.env.VITE_HOST_URL}/setup`
+    }
+  });
+  console.log(error);
+  return { data, error };
+}
+
+// 2. Avatar Upload (Step 2)
 export async function uploadUserAvatar(userId: string, file: File) {
-  // Use a timestamp to avoid browser caching issues on update
   const fileExt = file.name.split('.').pop();
   const fileName = `${userId}/${Date.now()}.${fileExt}`;
 
@@ -23,67 +45,18 @@ export async function uploadUserAvatar(userId: string, file: File) {
   return url.data.publicUrl;
 }
 
-export async function signInWithGoogle() {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${import.meta.env.VITE_HOST_URL}/auth/username`
-    }
-  });
-
-  if (error) throw error;
-}
-
-export async function signUpLocal(email: string, password: string, username: string, file: File) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-
-  if (error) return { data: null, error };
-
-  // CRITICAL CHECK: If email confirmation is ON, data.session will be null.
-  // We cannot proceed with profile creation until they log in.
-  if (!data.session) {
-    return {
-      data: null,
-      error: { message: "Please check your email to confirm your account before logging in." }
-    };
-  }
-
-  try {
-    // Pass the session token directly to ensure we are authenticated
-    const avatarUrl = await uploadUserAvatar(data.user!.id, file);
-    const profileData = await initProfile("local", username, avatarUrl, data.session.access_token);
-
-    return { data: profileData, error: null };
-  } catch (err) {
-    return { data: null, error: err };
-  }
-}
-
-// Added optional accessToken parameter to avoid refetching session
+// 3. Profile Initialization (Step 2)
 export async function initProfile(
-  type: "local" | "oauth",
   username: string,
   image?: string,
   accessToken?: string
 ) {
   let token = accessToken;
-  let avatarUrl = image;
 
-  // Only fetch the session if we don't have a token (e.g., OAuth flow)
   if (!token) {
     const { data: { session }, error } = await supabase.auth.getSession();
-
     if (error || !session) throw new Error("No active session");
-
     token = session.access_token;
-
-    // For OAuth, try to grab the avatar from metadata if not provided explicitly
-    if (type === "oauth" && !avatarUrl) {
-      avatarUrl = session.user?.user_metadata?.avatar_url || null;
-    }
   }
 
   const response = await fetch("/api/init-profile", {
@@ -94,7 +67,7 @@ export async function initProfile(
     },
     body: JSON.stringify({
       username: username,
-      avatar: avatarUrl || null,
+      avatar: image || null,
     })
   });
 
@@ -104,4 +77,15 @@ export async function initProfile(
   }
 
   return await response.json();
+}
+
+export async function signInWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${import.meta.env.VITE_HOST_URL}/setup` // Redirect to setup after Google login too
+    }
+  });
+
+  if (error) throw error;
 }

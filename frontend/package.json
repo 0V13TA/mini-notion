@@ -39,6 +39,7 @@
 	},
 	"dependencies": {
 		"@friendofsvelte/tipex": "^0.0.9",
-		"@supabase/supabase-js": "^2.86.2"
+		"@supabase/supabase-js": "^2.86.2",
+		"lucide-svelte": "^0.555.0"
 	}
 }
