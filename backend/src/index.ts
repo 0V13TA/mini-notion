@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
-import { profiles } from './db/schema.js';
+import { profiles } from './db/schema.ts';
 import { verifySupabaseToken } from './verifySupabaseToken.ts';
 
 const app = express();
@@ -38,6 +38,7 @@ app.post("/api/init-profile", verifySupabaseToken, async (req: any, res) => {
     }).returning();
 
     res.status(200).json(newProfile[0]);
+    console.log(newProfile);
 
   } catch (error) {
     console.error("Init profile error:", error);
