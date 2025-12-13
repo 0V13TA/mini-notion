@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY
 );
 
 export async function signInLocal(email: string, password: string) {
@@ -28,21 +28,41 @@ export async function signUpLocal(email: string, password: string) {
 }
 
 // 2. Avatar Upload (Step 2)
+// This combines the upload logic we discussed with the database update
 export async function uploadUserAvatar(userId: string, file: File) {
+  // 1. Upload to Storage (The code we discussed previously)
   const fileExt = file.name.split('.').pop();
-  const fileName = `${userId}/${Date.now()}.${fileExt}`;
+  const fileName = `${userId}/avatar.${fileExt}`;
 
-  const { data, error } = await supabase.storage
+  const { error: uploadError } = await supabase.storage
     .from('avatars')
     .upload(fileName, file, {
-      cacheControl: '3600',
-      upsert: true
+      upsert: true,
+      cacheControl: '3600'
     });
 
-  if (error) throw error;
+  if (uploadError) throw uploadError;
 
-  const url = supabase.storage.from('avatars').getPublicUrl(data.path);
-  return url.data.publicUrl;
+  // 2. Get the Public URL
+  const { data: urlData } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(fileName);
+
+  const publicUrl = urlData.publicUrl;
+
+  // 3. Save the URL to the 'profiles' table
+  const { error: dbError } = await supabase
+    .from('profiles')
+    .update({
+      profile_picture: publicUrl,
+      updated_at: new Date() // Good practice if you have this column
+    })
+    .eq('id', userId);
+
+  if (dbError) throw dbError;
+
+  // Return the URL with a timestamp to force the browser to refresh the image
+  return `${publicUrl}?t=${Date.now()}`;
 }
 
 // 3. Profile Initialization (Step 2)
