@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type Express from "express"
 
@@ -7,7 +8,7 @@ if (!jwkURL) {
 }
 
 const jwks = createRemoteJWKSet(
-  new URL(jwkURL)
+  new URL(`${jwkURL}/auth/v1/.well-known/jwks.json`)
 );
 
 export async function verifySupabaseToken(req: Express.Request, res: Express.Response, next: Express.NextFunction) {
@@ -19,14 +20,15 @@ export async function verifySupabaseToken(req: Express.Request, res: Express.Res
 
   try {
     const { payload } = await jwtVerify(token, jwks, {
-      issuer: jwkURL!,
+      issuer: `${jwkURL}/auth/v1`,
+      audience: "authenticated",
     });
 
     req.user = payload; // contains sub (user_id), email, etc.
     return next();
   } catch (err) {
     console.error(err);
-    return res.status(401).send("Invalid token");
+    return res.status(401).json("Invalid token");
   }
 }
 

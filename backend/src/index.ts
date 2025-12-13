@@ -34,10 +34,8 @@ app.post("/api/init-profile", verifySupabaseToken, async (req: any, res) => {
     const [newProfile] = await db.transaction(async (tx) => {
       // 1. Set the config so Postgres thinks we are the authenticated user
       // This satisfies the "auth.uid() = id" or "role = authenticated" policies
-      await tx.execute(sql`
-        SELECT set_config('request.jwt.claim.sub', ${sub}, true);
-        SELECT set_config('request.jwt.claim.role', 'authenticated', true);
-      `);
+      await tx.execute(sql`SELECT set_config('request.jwt.claim.sub', ${sub}, true);`);
+      await tx.execute(sql`SELECT set_config('request.jwt.claim.role', 'authenticated', true);`)
 
       // 2. Perform the insert within the same transaction scope
       return await tx.insert(profiles).values({
