@@ -1,13 +1,12 @@
 <script>
-	console.log('This is the +page.svelte file');
+	import Navbar from '$lib/components/Navbar.svelte';
+
+	let pageTitle = 'Project Roadmap';
+	let pageIcon = '🚀';
 </script>
 
-<div>
-	<h1>I Like fish</h1>
-</div>
+<div class="page-layout">
+	<Navbar title={pageTitle} icon={pageIcon} />
 
-<style>
-	div {
-		color: #ff0044;
-	}
-</style>
+	<div class="editor-container"></div>
+</div>
