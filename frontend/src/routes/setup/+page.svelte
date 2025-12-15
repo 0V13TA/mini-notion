@@ -6,25 +6,54 @@
 	let username = $state('');
 	let files: FileList | null = $state(null);
 	let previewUrl: string | null = $state(null);
+	// NEW: State to hold the Google avatar
+	let initialAvatar: string | null = $state(null);
+
 	let loading = $state(false);
 	let errorMessage = $state('');
 
+	// Handle file preview (local upload)
 	$effect(() => {
 		if (files && files.length > 0) {
 			previewUrl = URL.createObjectURL(files[0]);
+		} else {
+			previewUrl = null;
 		}
 		return () => {
 			if (previewUrl) URL.revokeObjectURL(previewUrl);
 		};
 	});
 
-	// Protect this route: Ensure user is logged in
 	onMount(async () => {
+		// 1. Check Session
 		const {
 			data: { session }
 		} = await supabase.auth.getSession();
 		if (!session) {
 			goto('/login');
+			return;
+		}
+
+		// 2. NEW: Check if Profile Already Exists
+		const { data: profile } = await supabase
+			.from('profiles')
+			.select('username')
+			.eq('id', session.user.id)
+			.single();
+
+		// If they already have a profile, kick them to the dashboard
+		if (profile) {
+			goto('/');
+			return;
+		}
+
+		// 3. Prefill Logic (Only runs if they DON'T have a profile)
+		const metadata = session.user.user_metadata;
+		if (metadata?.avatar_url || metadata?.picture) {
+			initialAvatar = metadata.avatar_url || metadata.picture;
+		}
+		if (metadata?.full_name) {
+			username = metadata.full_name.replace(/\s+/g, '').toLowerCase();
 		}
 	});
 
@@ -34,25 +63,24 @@
 		errorMessage = '';
 
 		try {
-			// Get current user
 			const {
 				data: { user }
 			} = await supabase.auth.getUser();
 			if (!user) throw new Error('Not authenticated');
 
-			let avatarUrl = null;
+			let finalAvatarUrl = initialAvatar; // Default to Google image
 
-			// 1. Upload Avatar (if selected)
+			// 1. If user picked a NEW file, upload it and use that instead
 			if (files && files.length > 0) {
-				avatarUrl = await uploadUserAvatar(user.id, files[0]);
+				finalAvatarUrl = await uploadUserAvatar(user.id, files[0]);
 			}
 
-			// 2. Initialize Profile
-			await initProfile(username, avatarUrl || undefined);
+			// 2. Initialize Profile with the chosen URL
+			await initProfile(username, finalAvatarUrl || undefined);
 
-			// 3. Done!
 			goto('/');
 		} catch (error: any) {
+			console.error(error);
 			errorMessage = error.message || 'Setup failed';
 		} finally {
 			loading = false;
@@ -74,13 +102,18 @@
 			</div>
 
 			<div class="form-group">
-				<label for="avatar">Profile Picture (Optional)</label>
-				{#if previewUrl}
+				<label for="avatar">Profile Picture</label>
+
+				{#if previewUrl || initialAvatar}
 					<div class="image-preview-container">
-						<img src={previewUrl} alt="Avatar preview" class="image-preview" />
+						<img src={previewUrl || initialAvatar} alt="Avatar preview" class="image-preview" />
 					</div>
 				{/if}
+
 				<input id="avatar" type="file" accept="image/png, image/jpeg, image/gif" bind:files />
+				{#if initialAvatar && !files}
+					<p class="hint">Using your Google profile picture. Upload to change it.</p>
+				{/if}
 			</div>
 
 			{#if errorMessage}
@@ -95,7 +128,15 @@
 </div>
 
 <style>
-	/* Reuse styles from login/signup pages for consistency */
+	/* ... existing styles ... */
+	.hint {
+		font-size: 0.8rem;
+		color: var(--color-text);
+		opacity: 0.7;
+		margin-top: 0.5rem;
+		text-align: center;
+	}
+	/* Add your other styles from previous files here */
 	.page-container {
 		min-height: 100vh;
 		display: flex;

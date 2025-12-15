@@ -46,7 +46,14 @@ export async function uploadUserAvatar(userId: string, file: File) {
   // 2. Get the Public URL
   const { data: urlData } = supabase.storage
     .from('avatars')
-    .getPublicUrl(fileName);
+    .getPublicUrl(fileName, {
+      transform: {
+        width: 150,
+        height: 150,
+        quality: 60,
+        resize: 'cover',
+      }
+    });
 
   const publicUrl = urlData.publicUrl;
 
