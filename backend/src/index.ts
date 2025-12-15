@@ -2,9 +2,9 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { sql } from "drizzle-orm"; // Import sql
+import { sql, and, eq } from "drizzle-orm"; // Import sql
 import pg from 'pg';
-import { profiles } from './db/schema.ts';
+import { profiles, pages } from './db/schema.ts';
 import { verifySupabaseToken } from './verifySupabaseToken.ts'; // Ensure extension matches your file
 
 const app = express();
@@ -52,6 +52,51 @@ app.post("/api/init-profile", verifySupabaseToken, async (req: any, res) => {
   } catch (error) {
     console.error("Init profile error:", error);
     res.status(500).json({ message: "Failed to initialize profile" });
+  }
+});
+
+// 3. GET Single Page (Load the editor)
+app.get("/api/pages/:id", verifySupabaseToken, async (req: any, res) => {
+  try {
+    const { sub } = req.user;
+    const { id } = req.params;
+
+    // Security: Ensure the page belongs to the user requesting it!
+    const pageData = await db.select()
+      .from(pages)
+      .where(and(eq(pages.id, id), eq(pages.userId, sub)))
+      .limit(1);
+
+    if (pageData.length === 0) {
+      return res.status(404).json({ error: "Page not found" });
+    }
+
+    res.json(pageData[0]);
+  } catch (e) {
+    res.status(500).json({ error: "Failed to load page" });
+  }
+});
+
+// 4. UPDATE Page (Save title, icon, or content)
+app.put("/api/pages/:id", verifySupabaseToken, async (req: any, res) => {
+  try {
+    const { sub } = req.user;
+    const { id } = req.params;
+    const { title, content, icon } = req.body;
+
+    const [updatedPage] = await db.update(pages)
+      .set({
+        title,
+        content,
+        icon,
+        // implicitly updated_at could go here if you added it
+      })
+      .where(and(eq(pages.id, id), eq(pages.userId, sub)))
+      .returning();
+
+    res.json(updatedPage);
+  } catch (e) {
+    res.status(500).json({ error: "Failed to save page" });
   }
 });
 
