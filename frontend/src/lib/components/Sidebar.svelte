@@ -1,13 +1,103 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { Plus, FileText, Settings, LogOut, Search, ChevronsLeft, Menu } from 'lucide-svelte';
+	import {
+		Plus,
+		FileText,
+		Settings,
+		LogOut,
+		Search,
+		ChevronsLeft,
+		Menu,
+		MoreHorizontal,
+		Star,
+		Trash,
+		Pencil
+	} from 'lucide-svelte';
 
-	// Props using Svelte 5 syntax
-	// isOpen is 'bindable' so the parent can toggle it too if needed
-	let { pages = [], user = null, isOpen = $bindable(true), onCreatePage, onLogout } = $props();
+	// Props
+	let {
+		pages = [],
+		user = null,
+		session = null, // <--- Now accepts session for Auth
+		isOpen = $bindable(true),
+		onCreatePage,
+		onLogout
+	} = $props();
+
+	// Derived State: Split pages into Favorites and Private automatically
+	let favoritePages = $derived(pages.filter((p: any) => p.isFavorite));
+	let privatePages = $derived(pages.filter((p: any) => !p.isFavorite));
+
+	// UI State
+	let activeMenuId = $state<string | null>(null);
+	let renamingId = $state<string | null>(null);
+	let renameValue = $state('');
 
 	function toggle() {
 		isOpen = !isOpen;
+	}
+
+	// --- Helper: Get Token for API Calls ---
+	function getToken() {
+		return session?.access_token ? `Bearer ${session.access_token}` : '';
+	}
+
+	// --- Actions ---
+
+	async function handleRename(id: string) {
+		// Optimistic Update
+		const p = pages.find((p: any) => p.id === id);
+		if (p) p.title = renameValue;
+		renamingId = null;
+		activeMenuId = null;
+
+		// API Call with Token
+		await fetch(`/api/pages/${id}`, {
+			method: 'PUT',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: getToken()
+			},
+			body: JSON.stringify({ title: renameValue })
+		});
+	}
+
+	async function toggleFavorite(id: string, currentStatus: boolean) {
+		activeMenuId = null;
+		// Optimistic Update
+		const p = pages.find((p: any) => p.id === id);
+		if (p) p.isFavorite = !currentStatus;
+
+		// API Call with Token
+		await fetch(`/api/pages/${id}`, {
+			method: 'PUT',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: getToken()
+			},
+			body: JSON.stringify({ isFavorite: !currentStatus })
+		});
+	}
+
+	async function deletePage(id: string) {
+		if (!confirm('Are you sure?')) return;
+		activeMenuId = null;
+
+		const index = pages.findIndex((p: any) => p.id === id);
+		if (index > -1) pages.splice(index, 1);
+
+		// API Call with Token
+		await fetch(`/api/pages/${id}`, {
+			method: 'DELETE',
+			headers: { Authorization: getToken() }
+		});
+	}
+
+	function startRename(p: any) {
+		renamingId = p.id;
+		renameValue = p.title || '';
+		activeMenuId = null;
+		setTimeout(() => document.getElementById(`rename-${p.id}`)?.focus(), 50);
 	}
 </script>
 
@@ -25,7 +115,6 @@
 				{user?.user_metadata?.full_name || 'My Workspace'}
 			</span>
 		</div>
-
 		<button
 			class="icon-btn collapse-btn"
 			onclick={(e) => {
@@ -38,58 +127,105 @@
 	</div>
 
 	<div class="sidebar-menu">
-		<button class="menu-item">
-			<Search size={16} />
-			<span>Search</span>
-		</button>
-		<button class="menu-item">
-			<Settings size={16} />
-			<span>Settings</span>
-		</button>
+		<button class="menu-item"><Search size={16} /> <span>Search</span></button>
+		<button class="menu-item"><Settings size={16} /> <span>Settings</span></button>
 	</div>
 
-	<div class="sidebar-section">
-		<div class="section-header">
-			<span>Private</span>
-			<button class="add-btn" onclick={onCreatePage} title="Create new page">
-				<Plus size={14} />
-			</button>
-		</div>
+	<div class="scrolling-container">
+		{#if favoritePages.length > 0}
+			<div class="sidebar-section">
+				<div class="section-header">Favorites</div>
+				<div class="page-list">
+					{#each favoritePages as p (p.id)}
+						{@render pageItem(p)}
+					{/each}
+				</div>
+			</div>
+		{/if}
 
-		<div class="page-list">
-			{#if pages.length === 0}
-				<div class="empty-msg">No pages yet</div>
-			{/if}
-
-			{#each pages as p}
-				<a href="/p/{p.id}" class="page-item" class:active={$page.url.pathname === `/p/${p.id}`}>
-					{#if p.icon}
-						<span class="emoji-icon">{p.icon}</span>
-					{:else}
-						<FileText size={16} class="muted-icon" />
-					{/if}
-
-					<span class="page-title truncate">{p.title || 'Untitled'}</span>
-				</a>
-			{/each}
+		<div class="sidebar-section">
+			<div class="section-header">
+				<span>Private</span>
+				<button class="add-btn" onclick={onCreatePage}><Plus size={14} /></button>
+			</div>
+			<div class="page-list">
+				{#each privatePages as p (p.id)}
+					{@render pageItem(p)}
+				{/each}
+				{#if privatePages.length === 0 && favoritePages.length === 0}
+					<div class="empty-msg">No pages created</div>
+				{/if}
+			</div>
 		</div>
 	</div>
 
 	<div class="sidebar-footer">
 		<button class="menu-item" onclick={onLogout}>
-			<LogOut size={16} />
-			<span>Log out</span>
+			<LogOut size={16} /> <span>Log out</span>
 		</button>
 	</div>
 </aside>
 
 {#if !isOpen}
 	<div class="mobile-toggle">
-		<button class="icon-btn" onclick={toggle}>
-			<Menu size={20} />
-		</button>
+		<button class="icon-btn" onclick={toggle}><Menu size={20} /></button>
 	</div>
 {/if}
+
+{#snippet pageItem(p: any)}
+	<div class="page-item-wrapper">
+		{#if renamingId === p.id}
+			<input
+				id="rename-{p.id}"
+				class="rename-input"
+				type="text"
+				bind:value={renameValue}
+				onkeydown={(e) => e.key === 'Enter' && handleRename(p.id)}
+				onblur={() => handleRename(p.id)}
+			/>
+		{:else}
+			<a href="/p/{p.id}" class="page-item" class:active={$page.url.pathname === `/p/${p.id}`}>
+				{#if p.icon}
+					<span class="emoji-icon">{p.icon}</span>
+				{:else}
+					<FileText size={16} class="muted-icon" />
+				{/if}
+
+				<span class="page-title truncate">
+					{p.title || 'Untitled'}
+				</span>
+			</a>
+
+			<button
+				class="options-trigger"
+				onclick={(e) => {
+					e.stopPropagation();
+					e.preventDefault();
+					activeMenuId = activeMenuId === p.id ? null : p.id;
+				}}
+			>
+				<MoreHorizontal size={14} />
+			</button>
+		{/if}
+
+		{#if activeMenuId === p.id}
+			<div class="menu-overlay" onclick={() => (activeMenuId = null)} role="presentation"></div>
+			<div class="context-menu">
+				<button class="ctx-btn" onclick={() => toggleFavorite(p.id, p.isFavorite)}>
+					<Star size={14} class={p.isFavorite ? 'filled' : ''} />
+					{p.isFavorite ? 'Unfavorite' : 'Add to Favorites'}
+				</button>
+				<button class="ctx-btn" onclick={() => startRename(p)}>
+					<Pencil size={14} /> Rename
+				</button>
+				<div class="divider"></div>
+				<button class="ctx-btn delete" onclick={() => deletePage(p.id)}>
+					<Trash size={14} /> Delete
+				</button>
+			</div>
+		{/if}
+	</div>
+{/snippet}
 
 <style>
 	/* --- STRUCTURE --- */
@@ -99,25 +235,28 @@
 		display: flex;
 		flex-direction: column;
 		flex-shrink: 0;
-
-		/* THEME ADAPTATION */
-		/* Use a slightly darkened/mixed version of the bg for contrast */
 		background: color-mix(in srgb, var(--color-bg), var(--color-text) 3%);
 		color: var(--color-text);
 		font-family: var(--font-main);
 		border-right: 1px solid color-mix(in srgb, var(--color-text), transparent 92%);
-
 		transition:
 			width 0.3s cubic-bezier(0.25, 1, 0.5, 1),
 			opacity 0.2s;
 		overflow: hidden;
 		position: relative;
 	}
-
 	.sidebar.closed {
 		width: 0;
 		opacity: 0;
 		border: none;
+	}
+
+	.scrolling-container {
+		flex: 1;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
 	}
 
 	/* --- HEADER --- */
@@ -133,12 +272,8 @@
 	.sidebar-header:hover {
 		background: color-mix(in srgb, var(--color-text), transparent 95%);
 	}
-
 	.sidebar-header:hover .collapse-btn {
 		opacity: 0.5;
-	}
-	.collapse-btn:hover {
-		opacity: 1 !important;
 	}
 
 	.user-switcher {
@@ -149,7 +284,6 @@
 		font-weight: var(--font-weight-bold);
 		overflow: hidden;
 	}
-
 	.avatar-placeholder {
 		width: 20px;
 		height: 20px;
@@ -167,18 +301,19 @@
 		border-radius: 4px;
 		object-fit: cover;
 	}
-
 	.collapse-btn {
-		opacity: 0; /* Hidden by default, shown on hover */
+		opacity: 0;
 		transition: opacity 0.2s;
 	}
-
-	/* --- MENU ITEMS --- */
-	.sidebar-menu {
-		padding: 4px 0;
-		margin-bottom: 12px;
+	.collapse-btn:hover {
+		opacity: 1 !important;
 	}
 
+	/* --- MENUS --- */
+	.sidebar-menu {
+		padding: 4px 0;
+		margin-bottom: 4px;
+	}
 	.menu-item {
 		display: flex;
 		align-items: center;
@@ -187,30 +322,24 @@
 		padding: 6px 16px;
 		border: none;
 		background: none;
-
 		color: var(--color-text);
 		opacity: 0.7;
 		font-family: var(--font-main);
 		font-size: var(--text-small);
-
 		cursor: pointer;
 		transition: background 0.1s;
 	}
-
 	.menu-item:hover {
 		background: color-mix(in srgb, var(--color-text), transparent 95%);
 		opacity: 1;
 	}
 
-	/* --- PAGE LIST SECTION --- */
+	/* --- PAGE LIST SECTIONS --- */
 	.sidebar-section {
-		flex: 1;
-		overflow-y: auto;
-		padding-bottom: 20px;
+		padding-bottom: 8px;
 	}
-
 	.section-header {
-		padding: 8px 16px 4px 16px;
+		padding: 6px 16px 4px 16px;
 		font-size: 0.75rem;
 		font-weight: var(--font-weight-bold);
 		color: var(--color-text);
@@ -219,7 +348,6 @@
 		justify-content: space-between;
 		align-items: center;
 	}
-
 	.add-btn {
 		background: none;
 		border: none;
@@ -236,66 +364,141 @@
 	.add-btn:hover {
 		background: color-mix(in srgb, var(--color-text), transparent 90%);
 	}
-
-	.page-list {
-		display: flex;
-		flex-direction: column;
-	}
-
-	.page-item {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		padding: 6px 16px;
-		text-decoration: none;
-
-		color: var(--color-text);
-		font-size: var(--text-small);
-		opacity: 0.75;
-		border-left: 3px solid transparent; /* Marker for active state */
-	}
-
-	.page-item:hover {
-		background: color-mix(in srgb, var(--color-text), transparent 96%);
-		opacity: 1;
-	}
-
-	.page-item.active {
-		background: color-mix(in srgb, var(--color-primary), transparent 92%);
-		color: var(--color-primary); /* Highlight text */
-		opacity: 1;
-		font-weight: var(--font-weight-bold);
-		border-left-color: var(--color-primary);
-	}
-
-	.muted-icon {
-		opacity: 0.7;
-	}
-	.emoji-icon {
-		font-size: 1.1em;
-		width: 16px;
-		text-align: center;
-		line-height: 1;
-	}
 	.empty-msg {
 		padding: 0 16px;
 		font-size: 0.8rem;
 		opacity: 0.4;
 		font-style: italic;
+		margin-top: 4px;
 	}
 
-	/* --- FOOTER --- */
+	.page-list {
+		display: flex;
+		flex-direction: column;
+	}
+	.page-item-wrapper {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+	.page-item {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 6px 16px;
+		padding-right: 28px;
+		text-decoration: none;
+		flex: 1;
+		color: var(--color-text);
+		font-size: var(--text-small);
+		opacity: 0.75;
+		border-left: 3px solid transparent;
+	}
+	.page-item:hover {
+		background: color-mix(in srgb, var(--color-text), transparent 96%);
+		opacity: 1;
+	}
+	.page-item.active {
+		background: color-mix(in srgb, var(--color-primary), transparent 92%);
+		color: var(--color-primary);
+		opacity: 1;
+		font-weight: var(--font-weight-bold);
+		border-left-color: var(--color-primary);
+	}
+
+	/* --- CONTEXT MENU --- */
+	.options-trigger {
+		position: absolute;
+		right: 8px;
+		background: none;
+		border: none;
+		color: var(--color-text);
+		opacity: 0;
+		cursor: pointer;
+		padding: 4px;
+		border-radius: 4px;
+		display: flex;
+		align-items: center;
+	}
+	.page-item-wrapper:hover .options-trigger,
+	.options-trigger:focus {
+		opacity: 0.6;
+	}
+	.options-trigger:hover {
+		background: rgba(0, 0, 0, 0.05);
+		opacity: 1 !important;
+	}
+
+	.context-menu {
+		position: absolute;
+		top: 28px;
+		right: 10px;
+		background: var(--color-bg);
+		border: 1px solid rgba(0, 0, 0, 0.1);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+		border-radius: 6px;
+		padding: 4px;
+		z-index: 100;
+		min-width: 160px;
+		display: flex;
+		flex-direction: column;
+	}
+	.menu-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100vw;
+		height: 100vh;
+		z-index: 99;
+		cursor: default;
+	}
+	.ctx-btn {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 8px;
+		border: none;
+		background: none;
+		font-size: 0.85rem;
+		color: var(--color-text);
+		cursor: pointer;
+		border-radius: 4px;
+		text-align: left;
+	}
+	.ctx-btn:hover {
+		background: rgba(0, 0, 0, 0.05);
+	}
+	.ctx-btn.delete:hover {
+		background: #ffebeb;
+		color: #d32f2f;
+	}
+	.divider {
+		height: 1px;
+		background: rgba(0, 0, 0, 0.1);
+		margin: 4px 0;
+	}
+	.rename-input {
+		flex: 1;
+		margin: 4px 8px;
+		padding: 2px 6px;
+		border: 1px solid var(--color-primary);
+		border-radius: 3px;
+		font-size: var(--text-small);
+		background: var(--color-bg);
+		color: var(--color-text);
+		outline: none;
+	}
+
+	/* --- UTILS --- */
 	.sidebar-footer {
 		border-top: 1px solid color-mix(in srgb, var(--color-text), transparent 95%);
 		padding: 8px 0;
 	}
-
 	.truncate {
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
-
 	.icon-btn {
 		background: none;
 		border: none;
@@ -306,12 +509,24 @@
 		align-items: center;
 		justify-content: center;
 	}
-
-	/* Floating Toggle Button (when closed) */
 	.mobile-toggle {
 		position: absolute;
 		top: 12px;
 		left: 12px;
 		z-index: 50;
+	}
+	.muted-icon {
+		opacity: 0.7;
+	}
+	.emoji-icon {
+		font-size: 1.1em;
+		width: 16px;
+		text-align: center;
+		line-height: 1;
+	}
+	:global(.filled) {
+		fill: var(--color-accent);
+		color: var(--color-accent);
+		opacity: 1;
 	}
 </style>
