@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { supabase } from '$lib/supabaseClient';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import type { Session } from '@supabase/supabase-js';
 
 	let { children } = $props();
 
@@ -10,12 +11,15 @@
 	let pages = $state<any[]>([]);
 	let user = $state<any>(null);
 	let isSidebarOpen = $state(true);
+	let ses = $state<Session | null>(null);
 
 	// 2. FETCH: The function that talks to your API
 	async function loadData() {
 		const {
 			data: { session }
 		} = await supabase.auth.getSession();
+
+		ses = session;
 		if (!session) {
 			goto('/login');
 			return;
@@ -41,7 +45,10 @@
 
 		const res = await fetch('/api/pages', {
 			method: 'POST',
-			headers: { Authorization: `Bearer ${session.access_token}` }
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${session.access_token}`
+			}
 		});
 
 		if (res.ok) {
@@ -68,6 +75,7 @@
 		bind:isOpen={isSidebarOpen}
 		{pages}
 		{user}
+		session={ses}
 		onCreatePage={createPage}
 		onLogout={handleLogout}
 	/>

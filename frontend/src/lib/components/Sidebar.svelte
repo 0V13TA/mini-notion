@@ -39,7 +39,12 @@
 
 	// --- Helper: Get Token for API Calls ---
 	function getToken() {
-		return session?.access_token ? `Bearer ${session.access_token}` : '';
+		const token = session?.access_token;
+		if (!token) {
+			console.error(`Token Is null: ${token}`);
+			return '';
+		}
+		return `Bearer ${session.access_token}`;
 	}
 
 	// --- Actions ---

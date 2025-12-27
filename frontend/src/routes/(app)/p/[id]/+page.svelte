@@ -37,22 +37,26 @@
 	// Auto-Save Function (Debounced)
 	async function savePage() {
 		if (!pageData) return;
-
-		// Clear pending save to avoid double-firing
 		clearTimeout(saveTimeout);
 
-		// Wait 1 second after typing stops, then save
 		saveTimeout = setTimeout(async () => {
+			// Get the session from Supabase
 			const {
 				data: { session }
 			} = await supabase.auth.getSession();
-			if (!session) return;
 
-			console.log('Saving...'); // Debugging log
+			// FIX: Check if session and access_token actually exist
+			if (!session?.access_token) {
+				console.error('No active session found. Cannot save.');
+				return;
+			}
+
+			console.log('Saving with token...');
 			await fetch(`/api/pages/${pageData.id}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json',
+					// This will now only fire if the token is present
 					Authorization: `Bearer ${session.access_token}`
 				},
 				body: JSON.stringify({
