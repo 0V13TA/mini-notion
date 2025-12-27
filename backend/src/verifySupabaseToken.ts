@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import type Express from "express"
+import type Express from "express";
 
 const jwkURL = process.env.ISSUER;
 if (!jwkURL) {
@@ -8,10 +8,14 @@ if (!jwkURL) {
 }
 
 const jwks = createRemoteJWKSet(
-  new URL(`${jwkURL}/auth/v1/.well-known/jwks.json`)
+  new URL(`${jwkURL}/auth/v1/.well-known/jwks.json`),
 );
 
-export async function verifySupabaseToken(req: Express.Request, res: Express.Response, next: Express.NextFunction) {
+export async function verifySupabaseToken(
+  req: Express.Request,
+  res: Express.Response,
+  next: Express.NextFunction,
+) {
   const auth = req.headers.authorization;
 
   if (!auth) return res.status(401).send("Missing auth");
@@ -22,6 +26,7 @@ export async function verifySupabaseToken(req: Express.Request, res: Express.Res
     const { payload } = await jwtVerify(token, jwks, {
       issuer: `${jwkURL}/auth/v1`,
       audience: "authenticated",
+      algorithms: ["ES256"],
     });
 
     req.user = payload; // contains sub (user_id), email, etc.
@@ -31,4 +36,3 @@ export async function verifySupabaseToken(req: Express.Request, res: Express.Res
     return res.status(401).json("Invalid token");
   }
 }
-
