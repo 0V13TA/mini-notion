@@ -7,7 +7,6 @@
 		LogOut,
 		Search,
 		ChevronsLeft,
-		Menu,
 		MoreHorizontal,
 		Star,
 		Trash,
@@ -18,13 +17,13 @@
 	let {
 		pages = [],
 		user = null,
-		session = null, // <--- Now accepts session for Auth
+		session = null,
 		isOpen = $bindable(true),
 		onCreatePage,
 		onLogout
 	} = $props();
 
-	// Derived State: Split pages into Favorites and Private automatically
+	// Derived State
 	let favoritePages = $derived(pages.filter((p: any) => p.isFavorite));
 	let privatePages = $derived(pages.filter((p: any) => !p.isFavorite));
 
@@ -37,49 +36,29 @@
 		isOpen = !isOpen;
 	}
 
-	// --- Helper: Get Token for API Calls ---
 	function getToken() {
-		const token = session?.access_token;
-		if (!token) {
-			console.error(`Token Is null: ${token}`);
-			return '';
-		}
-		return `Bearer ${session.access_token}`;
+		return session?.access_token ? `Bearer ${session.access_token}` : '';
 	}
 
-	// --- Actions ---
-
 	async function handleRename(id: string) {
-		// Optimistic Update
 		const p = pages.find((p: any) => p.id === id);
 		if (p) p.title = renameValue;
 		renamingId = null;
 		activeMenuId = null;
-
-		// API Call with Token
 		await fetch(`/api/pages/${id}`, {
 			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: getToken()
-			},
+			headers: { 'Content-Type': 'application/json', Authorization: getToken() },
 			body: JSON.stringify({ title: renameValue })
 		});
 	}
 
 	async function toggleFavorite(id: string, currentStatus: boolean) {
 		activeMenuId = null;
-		// Optimistic Update
 		const p = pages.find((p: any) => p.id === id);
 		if (p) p.isFavorite = !currentStatus;
-
-		// API Call with Token
 		await fetch(`/api/pages/${id}`, {
 			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: getToken()
-			},
+			headers: { 'Content-Type': 'application/json', Authorization: getToken() },
 			body: JSON.stringify({ isFavorite: !currentStatus })
 		});
 	}
@@ -87,11 +66,8 @@
 	async function deletePage(id: string) {
 		if (!confirm('Are you sure?')) return;
 		activeMenuId = null;
-
 		const index = pages.findIndex((p: any) => p.id === id);
 		if (index > -1) pages.splice(index, 1);
-
-		// API Call with Token
 		await fetch(`/api/pages/${id}`, {
 			method: 'DELETE',
 			headers: { Authorization: getToken() }
@@ -171,12 +147,6 @@
 	</div>
 </aside>
 
-{#if !isOpen}
-	<div class="mobile-toggle">
-		<button class="icon-btn" onclick={toggle}><Menu size={20} /></button>
-	</div>
-{/if}
-
 {#snippet pageItem(p: any)}
 	<div class="page-item-wrapper">
 		{#if renamingId === p.id}
@@ -233,7 +203,8 @@
 {/snippet}
 
 <style>
-	/* --- STRUCTURE --- */
+	/* ... Copy the rest of your styles unchanged ... */
+	/* Make sure to REMOVE styles for .mobile-toggle if present */
 	.sidebar {
 		width: 240px;
 		height: 100vh;
@@ -264,7 +235,6 @@
 		gap: 12px;
 	}
 
-	/* --- HEADER --- */
 	.sidebar-header {
 		height: 45px;
 		padding: 0 16px;
@@ -314,7 +284,6 @@
 		opacity: 1 !important;
 	}
 
-	/* --- MENUS --- */
 	.sidebar-menu {
 		padding: 4px 0;
 		margin-bottom: 4px;
@@ -339,7 +308,6 @@
 		opacity: 1;
 	}
 
-	/* --- PAGE LIST SECTIONS --- */
 	.sidebar-section {
 		padding-bottom: 8px;
 	}
@@ -411,7 +379,6 @@
 		border-left-color: var(--color-primary);
 	}
 
-	/* --- CONTEXT MENU --- */
 	.options-trigger {
 		position: absolute;
 		right: 8px;
@@ -494,7 +461,6 @@
 		outline: none;
 	}
 
-	/* --- UTILS --- */
 	.sidebar-footer {
 		border-top: 1px solid color-mix(in srgb, var(--color-text), transparent 95%);
 		padding: 8px 0;
@@ -513,12 +479,6 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-	}
-	.mobile-toggle {
-		position: absolute;
-		top: 12px;
-		left: 12px;
-		z-index: 50;
 	}
 	.muted-icon {
 		opacity: 0.7;

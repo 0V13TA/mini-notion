@@ -76,25 +76,27 @@
 	<div class="editor-layout">
 		<Navbar title={pageData.title} icon={pageData.icon} isFavorite={false} />
 
-		<div class="editor-content">
-			<div class="cover-placeholder"></div>
+		<div class="scroller">
+			<div class="editor-content">
+				<div class="cover-placeholder"></div>
 
-			<div class="title-section">
-				{#if pageData.icon}
-					<div class="page-icon">{pageData.icon}</div>
-				{/if}
-				<input
-					type="text"
-					class="title-input"
-					placeholder="Untitled"
-					bind:value={pageData.title}
-					oninput={savePage}
-				/>
-			</div>
+				<div class="title-section">
+					{#if pageData.icon}
+						<div class="page-icon">{pageData.icon}</div>
+					{/if}
+					<input
+						type="text"
+						class="title-input"
+						placeholder="Untitled"
+						bind:value={pageData.title}
+						oninput={savePage}
+					/>
+				</div>
 
-			<div class="blocks-area">
-				<p style="color: #999; font-style: italic;">(Blocks editor coming next...)</p>
-				<pre>{JSON.stringify(pageData.content, null, 2)}</pre>
+				<div class="blocks-area">
+					<p style="color: #999; font-style: italic;">(Blocks editor coming next...)</p>
+					<pre>{JSON.stringify(pageData.content, null, 2)}</pre>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -108,7 +110,14 @@
 		display: flex;
 		flex-direction: column;
 		background: var(--color-bg);
-		overflow-y: auto; /* Scroll the whole page */
+		overflow: hidden; /* FIX: Prevent the whole page from scrolling */
+	}
+
+	/* New Class: Handles scrolling for content only */
+	.scroller {
+		flex: 1; /* Takes up all remaining vertical space below Navbar */
+		overflow-y: auto; /* Enables vertical scrolling */
+		width: 100%;
 	}
 
 	.editor-content {

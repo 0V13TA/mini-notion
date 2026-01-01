@@ -1,42 +1,47 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, setContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { supabase } from '$lib/supabaseClient';
-	import Sidebar from '$lib/components/Sidebar.svelte';
 	import type { Session } from '@supabase/supabase-js';
+	import Sidebar from '$lib/components/Sidebar.svelte';
 
 	let { children } = $props();
 
-	// 1. STATE: Holds the list of pages from the DB
+	// 1. STATE
 	let pages = $state<any[]>([]);
 	let user = $state<any>(null);
 	let isSidebarOpen = $state(true);
-	let ses = $state<Session | null>(null);
+	let sessionData = $state<Session | null>(null);
 
-	// 2. FETCH: The function that talks to your API
+	// SHARE STATE: Allow Navbar to access and toggle the sidebar
+	setContext('sidebar', {
+		get isOpen() {
+			return isSidebarOpen;
+		},
+		toggle: () => (isSidebarOpen = !isSidebarOpen)
+	});
+
+	// 2. FETCH
 	async function loadData() {
 		const {
 			data: { session }
 		} = await supabase.auth.getSession();
-
-		ses = session;
 		if (!session) {
 			goto('/login');
 			return;
 		}
 		user = session.user;
+		sessionData = session;
 
-		// GET /api/pages (Returns all pages, sorted by newest)
 		const res = await fetch('/api/pages', {
 			headers: { Authorization: `Bearer ${session.access_token}` }
 		});
-
 		if (res.ok) {
-			pages = await res.json(); // <--- This populates the sidebar
+			pages = await res.json();
 		}
 	}
 
-	// 3. CREATE: Adds a new page and updates the list immediately
+	// 3. CREATE
 	async function createPage() {
 		const {
 			data: { session }
@@ -45,15 +50,10 @@
 
 		const res = await fetch('/api/pages', {
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${session.access_token}`
-			}
+			headers: { Authorization: `Bearer ${session.access_token}` }
 		});
-
 		if (res.ok) {
 			const newPage = await res.json();
-			// Add new page to the TOP of the list
 			pages = [newPage, ...pages];
 			goto(`/p/${newPage.id}`);
 		}
@@ -64,7 +64,6 @@
 		goto('/login');
 	}
 
-	// Run fetch on load
 	onMount(() => {
 		loadData();
 	});
@@ -75,7 +74,7 @@
 		bind:isOpen={isSidebarOpen}
 		{pages}
 		{user}
-		session={ses}
+		session={sessionData}
 		onCreatePage={createPage}
 		onLogout={handleLogout}
 	/>
