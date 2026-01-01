@@ -2,14 +2,15 @@
 	import { onMount, setContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { supabase } from '$lib/supabaseClient';
-	import type { Session } from '@supabase/supabase-js';
+	import type { Session, User } from '@supabase/supabase-js';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import type { PageData } from '$lib/types';
 
 	let { children } = $props();
 
 	// 1. STATE
-	let pages = $state<any[]>([]);
-	let user = $state<any>(null);
+	let pages = $state<PageData[]>([]);
+	let user = $state<User | null>(null);
 	let isSidebarOpen = $state(true);
 	let sessionData = $state<Session | null>(null);
 

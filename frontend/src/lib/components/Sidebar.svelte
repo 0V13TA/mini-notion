@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import type { PageData } from '$lib/types';
 	import {
 		Plus,
 		FileText,
@@ -24,8 +25,8 @@
 	} = $props();
 
 	// Derived State
-	let favoritePages = $derived(pages.filter((p: any) => p.isFavorite));
-	let privatePages = $derived(pages.filter((p: any) => !p.isFavorite));
+	let favoritePages = $derived(pages.filter((p: PageData) => p.isFavorite));
+	let privatePages = $derived(pages.filter((p: PageData) => !p.isFavorite));
 
 	// UI State
 	let activeMenuId = $state<string | null>(null);
@@ -41,7 +42,7 @@
 	}
 
 	async function handleRename(id: string) {
-		const p = pages.find((p: any) => p.id === id);
+		const p = pages.find((p: PageData) => p.id === id);
 		if (p) p.title = renameValue;
 		renamingId = null;
 		activeMenuId = null;
@@ -54,7 +55,7 @@
 
 	async function toggleFavorite(id: string, currentStatus: boolean) {
 		activeMenuId = null;
-		const p = pages.find((p: any) => p.id === id);
+		const p = pages.find((p: PageData) => p.id === id);
 		if (p) p.isFavorite = !currentStatus;
 		await fetch(`/api/pages/${id}`, {
 			method: 'PUT',
@@ -66,7 +67,7 @@
 	async function deletePage(id: string) {
 		if (!confirm('Are you sure?')) return;
 		activeMenuId = null;
-		const index = pages.findIndex((p: any) => p.id === id);
+		const index = pages.findIndex((p: PageData) => p.id === id);
 		if (index > -1) pages.splice(index, 1);
 		await fetch(`/api/pages/${id}`, {
 			method: 'DELETE',
@@ -74,7 +75,7 @@
 		});
 	}
 
-	function startRename(p: any) {
+	function startRename(p: PageData) {
 		renamingId = p.id;
 		renameValue = p.title || '';
 		activeMenuId = null;
@@ -147,7 +148,7 @@
 	</div>
 </aside>
 
-{#snippet pageItem(p: any)}
+{#snippet pageItem(p: PageData)}
 	<div class="page-item-wrapper">
 		{#if renamingId === p.id}
 			<input

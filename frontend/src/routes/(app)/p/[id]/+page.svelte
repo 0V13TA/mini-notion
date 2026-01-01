@@ -2,11 +2,13 @@
 	import { page } from '$app/stores';
 	import { supabase } from '$lib/supabaseClient';
 	import Navbar from '$lib/components/Navbar.svelte';
+	import Block from '$lib/components/Block.svelte';
+	import type { PageData, BlockType } from '$lib/types';
 
 	// State
-	let pageData = $state<any>(null);
+	let pageData = $state<PageData | null>(null);
 	let loading = $state(true);
-	let saveTimeout: any;
+	let saveTimeout: NodeJS.Timeout;
 
 	// Reactive ID: Refetch when URL changes (e.g. clicking a different sidebar link)
 	$effect(() => {
@@ -45,9 +47,14 @@
 				data: { session }
 			} = await supabase.auth.getSession();
 
-			// FIX: Check if session and access_token actually exist
+			//Check if session and access_token actually exist
 			if (!session?.access_token) {
 				console.error('No active session found. Cannot save.');
+				return;
+			}
+
+			if (pageData === null) {
+				console.error('No page data to save.');
 				return;
 			}
 
@@ -67,6 +74,49 @@
 			});
 			console.log('Saved!');
 		}, 1000);
+	}
+
+	function addNewBlock(index: number) {
+		if (!pageData) return;
+		const currentBlock = pageData.content[index];
+
+		// "Exit List" Logic: If inside a list/todo but it's empty, turn it into a paragraph
+		if (
+			(currentBlock.type === 'list' || currentBlock.type === 'todo') &&
+			currentBlock.content.trim() === ''
+		) {
+			currentBlock.type = 'paragraph';
+			delete currentBlock.properties;
+			savePage();
+			return;
+		}
+
+		// 2. Default to paragraph
+		let newType: BlockType['type'] = 'paragraph';
+		let newProperties: BlockType['properties'] = {};
+
+		// 3. Logic: If current is a list or todo, copy that style
+		if (currentBlock.type === 'list') {
+			newType = 'list';
+			newProperties = { listType: currentBlock.properties?.listType };
+		} else if (currentBlock.type === 'todo') {
+			newType = 'todo';
+			newProperties = { checked: false }; // Always start new todos as unchecked
+		}
+		// Note: We deliberately don't copy 'heading' types, as hitting Enter after a title usually starts a paragraph.
+
+		const newBlock: BlockType = {
+			id: crypto.randomUUID(),
+			type: newType,
+			content: '',
+			properties: newProperties
+		};
+
+		// 4. Insert after the current index
+		pageData.content.splice(index + 1, 0, newBlock);
+
+		// 5. Trigger save
+		savePage();
 	}
 </script>
 
@@ -94,8 +144,15 @@
 				</div>
 
 				<div class="blocks-area">
-					<p style="color: #999; font-style: italic;">(Blocks editor coming next...)</p>
-					<pre>{JSON.stringify(pageData.content, null, 2)}</pre>
+					{#if pageData.content}
+						{#each pageData.content as block, i (block.id)}
+							<Block
+								bind:block={pageData.content[i]}
+								onEnter={() => addNewBlock(i)}
+								onUpdate={savePage}
+							/>
+						{/each}
+					{/if}
 				</div>
 			</div>
 		</div>
