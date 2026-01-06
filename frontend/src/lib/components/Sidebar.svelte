@@ -481,9 +481,7 @@
 		align-items: center;
 		justify-content: center;
 	}
-	.muted-icon {
-		opacity: 0.7;
-	}
+
 	.emoji-icon {
 		font-size: 1.1em;
 		width: 16px;
