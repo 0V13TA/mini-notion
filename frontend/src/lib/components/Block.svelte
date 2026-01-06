@@ -40,7 +40,7 @@
 	}
 
 	// Helper to safely update block type
-	function setType(type: BlockType['type'], props: Record<string, any> = {}) {
+	function setType(type: BlockType['type'], props: BlockType['properties'] = {}) {
 		block.type = type;
 		block.properties = { ...block.properties, ...props };
 		showCommandMenu = false;
@@ -64,6 +64,7 @@
 
 	<div
 		bind:this={element}
+		bind:textContent={block.content}
 		contenteditable="true"
 		role="textbox"
 		tabindex="0"
