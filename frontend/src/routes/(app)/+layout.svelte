@@ -15,11 +15,19 @@
 	let sessionData = $state<Session | null>(null);
 
 	// SHARE STATE: Allow Navbar to access and toggle the sidebar
-	setContext('sidebar', {
+	setContext('appState', {
 		get isOpen() {
 			return isSidebarOpen;
 		},
-		toggle: () => (isSidebarOpen = !isSidebarOpen)
+		toggleSidebar: () => (isSidebarOpen = !isSidebarOpen),
+		// New Function: Allows any page to update the central list (for Sidebar)
+		updatePage: (id: string, updates: PageData) => {
+			const index = pages.findIndex((p) => p.id === id);
+			if (index !== -1) {
+				// Merge updates into the existing page object
+				pages[index] = { ...pages[index], ...updates };
+			}
+		}
 	});
 
 	// 2. FETCH

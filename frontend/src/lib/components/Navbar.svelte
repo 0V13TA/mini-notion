@@ -1,17 +1,22 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
 	import { Slash, MoreHorizontal, Star, Share, Menu } from 'lucide-svelte';
+	import { getContext } from 'svelte';
 
-	let { title = 'Untitled', icon = null, isFavorite = false } = $props();
+	// Added 'onToggleFavorite' to props
+	let { title = 'Untitled', icon = null, isFavorite = false, onToggleFavorite } = $props();
 
-	// Get the sidebar state from layout
-	const sidebar = getContext<any>('sidebar');
+	// Updated to use the new 'appState' context key
+	const appState = getContext<any>('appState');
 </script>
 
 <nav class="navbar">
 	<div class="left-section">
-		{#if !sidebar.isOpen}
-			<button class="nav-btn icon-only menu-btn" onclick={sidebar.toggle} title="Open sidebar">
+		{#if !appState.isOpen}
+			<button
+				class="nav-btn icon-only menu-btn"
+				onclick={appState.toggleSidebar}
+				title="Open sidebar"
+			>
 				<Menu size={18} />
 			</button>
 		{/if}
@@ -20,16 +25,11 @@
 			<span class="workspace-name">My Workspace</span>
 		</div>
 
-		<span class="separator">
-			<Slash size={14} />
-		</span>
+		<span class="separator"><Slash size={14} /></span>
 
 		<div class="breadcrumb-item page-item">
-			{#if icon}
-				<span class="page-icon">{icon}</span>
-			{:else}
-				<span class="default-icon">📄</span>
-			{/if}
+			{#if icon}<span class="page-icon">{icon}</span>{:else}<span class="default-icon">📄</span
+				>{/if}
 			<span class="page-title truncate">{title}</span>
 		</div>
 	</div>
@@ -42,7 +42,7 @@
 			<span class="btn-text">Share</span>
 		</button>
 
-		<button class="nav-btn icon-only" title="Favorite">
+		<button class="nav-btn icon-only" title="Favorite" onclick={onToggleFavorite}>
 			<Star size={16} class={isFavorite ? 'filled' : ''} />
 		</button>
 

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { page } from '$app/stores';
+	import { getContext } from 'svelte';
 	import { supabase } from '$lib/supabaseClient';
 	import Navbar from '$lib/components/Navbar.svelte';
 	import Block from '$lib/components/Block.svelte';
@@ -10,6 +11,8 @@
 	let pageData = $state<PageData | null>(null);
 	let loading = $state(true);
 	let saveTimeout: NodeJS.Timeout;
+
+	const appState = getContext<any>('appState');
 
 	// Reactive ID: Refetch when URL changes (e.g. clicking a different sidebar link)
 	$effect(() => {
@@ -164,13 +167,45 @@
 			}
 		}
 	}
+
+	async function toggleFavorite() {
+		if (!pageData) return;
+
+		// 1. Optimistic Update (Local UI)
+		const newStatus = !pageData.isFavorite;
+		pageData.isFavorite = newStatus;
+
+		// 2. Optimistic Update (Global Sidebar)
+		// This makes it move to the "Favorites" folder instantly
+		appState.updatePage(pageData.id, { isFavorite: newStatus });
+
+		// 3. Persist to Backend
+		const {
+			data: { session }
+		} = await supabase.auth.getSession();
+		if (session?.access_token) {
+			await fetch(`/api/pages/${pageData.id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${session.access_token}`
+				},
+				body: JSON.stringify({ isFavorite: newStatus })
+			});
+		}
+	}
 </script>
 
 {#if loading}
 	<div class="loading">Loading...</div>
 {:else if pageData}
 	<div class="editor-layout">
-		<Navbar title={pageData.title} icon={pageData.icon} isFavorite={false} />
+		<Navbar
+			title={pageData.title}
+			icon={pageData.icon}
+			isFavorite={false}
+			onToggleFavorite={toggleFavorite}
+		/>
 
 		<div class="scroller">
 			<div class="editor-content">
