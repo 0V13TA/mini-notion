@@ -57,10 +57,31 @@
 	function setType(type: BlockType['type'], props: BlockType['properties'] = {}) {
 		block.type = type;
 		block.properties = { ...block.properties, ...props };
+
+		if (block.content.trim() === '/') {
+			// If the block only contains the slash, clear it completely
+			block.content = '';
+		} else if (block.content.endsWith('/')) {
+			// If the slash is at the end (e.g. "Hello /"), remove just the slash
+			block.content = block.content.slice(0, -1);
+		}
+
 		showCommandMenu = false;
 		onUpdate();
-		// Refocus the element after change
-		setTimeout(() => element?.focus(), 0);
+
+		// Refocus the element (setTimeout ensures DOM is ready)
+		setTimeout(() => {
+			if (element) {
+				element.focus();
+				// Optional: Move cursor to the end if there is remaining text
+				const range = document.createRange();
+				const sel = window.getSelection();
+				range.selectNodeContents(element);
+				range.collapse(false);
+				sel?.removeAllRanges();
+				sel?.addRange(range);
+			}
+		}, 0);
 	}
 </script>
 
