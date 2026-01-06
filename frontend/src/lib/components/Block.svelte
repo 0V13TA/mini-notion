@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { BlockType } from '$lib/types';
 
-	let { block = $bindable(), onEnter, onUpdate } = $props();
+	let { block = $bindable(), onEnter, onUpdate, onDelete } = $props();
 
 	// State for the Slash Menu
 	let showCommandMenu = $state(false);
@@ -26,6 +26,20 @@
 
 		if (e.key === 'Backspace' && block.content === '') {
 			// Optional: logic to delete block if empty (handled by parent usually)
+		}
+
+		if (e.key === 'Backspace') {
+			if (block.content === '') {
+				e.preventDefault();
+				onDelete(true); // true = backspace (go to previous)
+			}
+		}
+
+		if (e.key === 'Delete') {
+			if (block.content === '') {
+				e.preventDefault();
+				onDelete(false); // false = delete (pull next or stay)
+			}
 		}
 
 		if (e.key === 'Escape') {

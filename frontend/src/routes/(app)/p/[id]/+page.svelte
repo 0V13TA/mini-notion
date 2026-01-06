@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { page } from '$app/stores';
 	import { supabase } from '$lib/supabaseClient';
 	import Navbar from '$lib/components/Navbar.svelte';
@@ -118,6 +119,51 @@
 		// 5. Trigger save
 		savePage();
 	}
+
+	async function deleteBlock(index: number, isBackspace: boolean) {
+		if (!pageData) return;
+		if (pageData.content.length <= 1) return; // Prevent deleting the last block
+
+		// 1. Determine which ID we should focus AFTER deletion
+		let idToFocus = '';
+
+		if (isBackspace) {
+			// Focus the previous block
+			if (index > 0) {
+				idToFocus = pageData.content[index - 1].id;
+			}
+		} else {
+			// 'Delete' key: Focus the block that *slides into* this position (the next one)
+			if (index < pageData.content.length - 1) {
+				idToFocus = pageData.content[index + 1].id;
+			} else if (index > 0) {
+				// If deleting the last block, focus the one before it
+				idToFocus = pageData.content[index - 1].id;
+			}
+		}
+
+		// 2. Remove the block
+		pageData.content.splice(index, 1);
+		savePage();
+
+		// 3. Wait for DOM update, then Focus
+		if (idToFocus) {
+			await tick();
+			const el = document.getElementById(`block-${idToFocus}`);
+			if (el) {
+				el.focus();
+				// Optional: Move cursor to end of the previous block for natural feel
+				if (isBackspace) {
+					const range = document.createRange();
+					const sel = window.getSelection();
+					range.selectNodeContents(el);
+					range.collapse(false); // false = collapse to end
+					sel?.removeAllRanges();
+					sel?.addRange(range);
+				}
+			}
+		}
+	}
 </script>
 
 {#if loading}
@@ -150,6 +196,7 @@
 								bind:block={pageData.content[i]}
 								onEnter={() => addNewBlock(i)}
 								onUpdate={savePage}
+								onDelete={(isBackspace: boolean) => deleteBlock(i, isBackspace)}
 							/>
 						{/each}
 					{/if}
